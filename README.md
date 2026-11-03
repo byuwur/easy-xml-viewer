@@ -1,5 +1,7 @@
 # byuwur/easy-xml-viewer
 
+![easy-xml-viewer preview](prev.jpg)
+
 **XML, unfold every tag.**
 
 Explore elements, attributes, namespaces, text, comments, and CDATA in a searchable tree.
@@ -176,7 +178,7 @@ node --check xml.js
 node --test tests/rendering.cjs
 ```
 
-`BROWSER_CHANNEL=chrome` uses installed Chrome; `CHROMIUM_EXECUTABLE_PATH` selects a Chromium executable. Otherwise, install Playwright Chromium.
+`BROWSER_CHANNEL=chrome` uses installed Chrome; `CHROMIUM_EXECUTABLE_PATH` selects a Chromium executable. Otherwise, install Playwright Chromium. [GitHub Actions](.github/workflows/rendering.yml) runs the same suite.
 
 ## The easy viewers
 
