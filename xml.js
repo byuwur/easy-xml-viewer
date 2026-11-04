@@ -10,6 +10,7 @@
   /* --- SETUP --- */
   if (global.byXMLviewer?.initialized) return;
   const instances = new WeakMap();
+  /* --- DOM HELPERS --- */
   const node = (tag, className = "", text) => {
     const element = document.createElement(tag);
     element.className = className;
@@ -51,9 +52,57 @@
     control.addEventListener("focusout", reset);
     return control;
   };
+  /** Yield at a chunk boundary so input events and replacement renders can run. */
   const pause = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+  /* --- PARSING --- */
+  const parseXML = (source) => {
+    if (typeof source !== "string") throw new TypeError("XML input must be a string.");
+    if (source.length > 2000000) throw new RangeError("XML exceeds 2 million characters.");
+    if (!source.trim()) return null;
+    // Reject DTDs before parsing, including external entities, but allow declaration-like text in comments/CDATA.
+    for (let i = source.indexOf("<"); i !== -1; i = source.indexOf("<", i + 1)) {
+      const end = source.startsWith("<!--", i) ? "-->" : source.startsWith("<![CDATA[", i) ? "]]>" : source.startsWith("<?", i) ? "?>" : null;
+      if (end) {
+        const close = source.indexOf(end, i + 2);
+        i = close < 0 ? source.length : close + end.length - 1;
+      } else if (/^<!DOCTYPE\b/i.test(source.slice(i, i + 10))) throw new SyntaxError("DTD/DOCTYPE declarations are not supported. External resources are never loaded.");
+    }
+    // This document stays detached. Only its text/attributes are copied into viewer-owned HTML.
+    const document = new DOMParser().parseFromString(source, "application/xml");
+    const error = ["http://www.mozilla.org/newlayout/xml/parsererror.xml", "http://www.w3.org/1999/xhtml"].map((namespace) => document.getElementsByTagNameNS(namespace, "parsererror")[0]).find(Boolean);
+    if (error) throw new SyntaxError(error.textContent.trim());
+    const stack = [{ value: document, depth: 0 }];
+    let count = 0;
+    while (stack.length) {
+      const { value, depth } = stack.pop();
+      if (++count > 50000) throw new RangeError("XML exceeds 50,000 nodes.");
+      if (depth > 256) throw new RangeError("XML exceeds 256 nesting levels.");
+      for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, depth: depth + 1 });
+    }
+    return document;
+  };
+  /* --- RENDERING --- */
+  const xmlRecords = (document, options) => {
+    if (!document) return [];
+    const records = [],
+      stack = [];
+    for (let child = document.lastChild; child; child = child.previousSibling) stack.push({ value: child, parent: null });
+    while (stack.length) {
+      const record = stack.pop(),
+        value = record.value;
+      if (value.nodeType === 3 && options.showWhitespace !== true && !value.nodeValue.trim()) continue;
+      record.index = records.length;
+      record.search = [value.nodeName, value.nodeValue ?? "", ...Array.from(value.attributes || [], (attribute) => `${attribute.name}=${attribute.value}`)].join(" ").toLowerCase();
+      records.push(record);
+      for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, parent: record });
+    }
+    return records;
+  };
+
+
   /* --- CONTROLS --- */
+  // Mirrored across the family so each viewer can run without a shared runtime.
   /**
    * Adds container light/dark controls, retaining legacy stylesheet links as a fallback.
    * @param {HTMLElement} element Viewer container and theme owner.
@@ -64,9 +113,7 @@
   const appendThemeToggle = (element, controls, filename) => {
     const escapedFilename = filename.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const themePattern = new RegExp(`^([^?#]*/)?${escapedFilename}\\.(light|dark)\\.css([?#].*)?$`, "i");
-    const stylesheet = [document.getElementById("byVIEWtheme"), ...document.querySelectorAll('link[rel~="stylesheet"]')].find(
-      (link) => link && themePattern.test(link.getAttribute("href") || "")
-    );
+    const stylesheet = [document.getElementById("byVIEWtheme"), ...document.querySelectorAll('link[rel~="stylesheet"]')].find((link) => link && themePattern.test(link.getAttribute("href") || ""));
     // Explicit container state takes precedence over a shared legacy stylesheet.
     const localTheme = (target) => {
       if (["light", "dark"].includes(target.dataset.theme)) return target.dataset.theme;
@@ -79,11 +126,11 @@
     const button = document.createElement("button");
     button.type = "button";
     button.className = "byVIEWthemeToggle";
-    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 12.8A9 9 0 0 1 11.2 3 9 9 0 1 0 21 12.8Z"/></svg><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>';
+    button.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 12.8A9 9 0 0 1 11.2 3 9 9 0 1 0 21 12.8Z"/></svg><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>';
     const sync = () => {
       const next = getTheme() === "dark" ? "light" : "dark";
-      const toggles =
-        !localTheme(element) && legacyTheme() ? [button, ...document.querySelectorAll(".byXMLdocument > .byVIEWtoolbar > .byVIEWcontrols > .byVIEWthemeToggle")] : [button];
+      const toggles = !localTheme(element) && legacyTheme() ? [button, ...document.querySelectorAll(".byXMLdocument > .byVIEWtoolbar > .byVIEWcontrols > .byVIEWthemeToggle")] : [button];
       for (const toggle of toggles) {
         // A legacy link must not change the controls of independently themed viewers.
         if (toggle !== button && localTheme(toggle.closest(".byXMLdocument"))) continue;
@@ -216,6 +263,7 @@
 
   /* --- LIFECYCLE --- */
   // One instance owns the container; replacement disposes its pending work first.
+  /** Replace the previous owner and return its cancellable state. Only the current owner may clear the host. */
   const mount = (element, options, getText) => {
     if (!(element instanceof HTMLElement)) throw new TypeError("byXMLviewer: element must be an HTMLElement.");
     instances.get(element)?.destroy();
@@ -273,53 +321,8 @@
     return state;
   };
 
-  /* --- CONTENT --- */
-  const parseXML = (source) => {
-    if (typeof source !== "string") throw new TypeError("XML input must be a string.");
-    if (source.length > 2000000) throw new RangeError("XML exceeds 2 million characters.");
-    if (!source.trim()) return null;
-    // Reject DTDs before parsing, including external entities, but allow declaration-like text in comments/CDATA.
-    for (let i = source.indexOf("<"); i !== -1; i = source.indexOf("<", i + 1)) {
-      const end = source.startsWith("<!--", i) ? "-->" : source.startsWith("<![CDATA[", i) ? "]]>" : source.startsWith("<?", i) ? "?>" : null;
-      if (end) {
-        const close = source.indexOf(end, i + 2);
-        i = close < 0 ? source.length : close + end.length - 1;
-      } else if (/^<!DOCTYPE\b/i.test(source.slice(i, i + 10))) throw new SyntaxError("DTD/DOCTYPE declarations are not supported. External resources are never loaded.");
-    }
-    const document = new DOMParser().parseFromString(source, "application/xml");
-    const error = ["http://www.mozilla.org/newlayout/xml/parsererror.xml", "http://www.w3.org/1999/xhtml"]
-      .map((namespace) => document.getElementsByTagNameNS(namespace, "parsererror")[0])
-      .find(Boolean);
-    if (error) throw new SyntaxError(error.textContent.trim());
-    const stack = [{ value: document, depth: 0 }];
-    let count = 0;
-    while (stack.length) {
-      const { value, depth } = stack.pop();
-      if (++count > 50000) throw new RangeError("XML exceeds 50,000 nodes.");
-      if (depth > 256) throw new RangeError("XML exceeds 256 nesting levels.");
-      for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, depth: depth + 1 });
-    }
-    return document;
-  };
-  const xmlRecords = (document, options) => {
-    if (!document) return [];
-    const records = [],
-      stack = [];
-    for (let child = document.lastChild; child; child = child.previousSibling) stack.push({ value: child, parent: null });
-    while (stack.length) {
-      const record = stack.pop(),
-        value = record.value;
-      if (value.nodeType === 3 && options.showWhitespace !== true && !value.nodeValue.trim()) continue;
-      record.index = records.length;
-      record.search = [value.nodeName, value.nodeValue ?? "", ...Array.from(value.attributes || [], (attribute) => `${attribute.name}=${attribute.value}`)].join(" ").toLowerCase();
-      records.push(record);
-      for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, parent: record });
-    }
-    return records;
-  };
-
-  /** Parse an inert XML document and render elements/attributes as text, with cancellable chunked DOM creation. */
   /* --- PUBLIC API --- */
+  /** Parse an inert XML document and render elements/attributes as text, with cancellable chunked DOM creation. */
   function byXMLviewer(element, source, options = {}) {
     if (source === undefined) source = element?.textContent ?? "";
     options = { collapsed: false, search: false, copyNodes: false, copyValues: false, showWhitespace: false, ...options };
@@ -333,22 +336,25 @@
     const status = node("p", "byVIEWstatus", "Parsing…");
     status.setAttribute("role", "status");
     const tree = node("div", "byXMLtree");
-    if (options.expandCollapse === true && options.collapsible !== false) button(actions, "Expand all", "Expand all XML nodes", () =>
-      tree.querySelectorAll("details").forEach((details) => {
-        details.open = true;
-      })
-    );
-    if (options.expandCollapse === true && options.collapsible !== false) button(actions, "Collapse all", "Collapse all XML nodes", () =>
-      tree.querySelectorAll("details").forEach((details) => {
-        details.open = false;
-      })
-    );
+    if (options.expandCollapse === true && options.collapsible !== false)
+      button(actions, "Expand all", "Expand all XML nodes", () =>
+        tree.querySelectorAll("details").forEach((details) => {
+          details.open = true;
+        })
+      );
+    if (options.expandCollapse === true && options.collapsible !== false)
+      button(actions, "Collapse all", "Collapse all XML nodes", () =>
+        tree.querySelectorAll("details").forEach((details) => {
+          details.open = false;
+        })
+      );
     const panel = node("div", "byVIEWpanel");
     panel.append(status, tree);
     state.content.append(actions, panel);
     const serializer = new XMLSerializer();
     let records = [],
       generation = 0;
+    /* --- RENDERING --- */
     const render = async () => {
       const version = ++generation;
       element.setAttribute("aria-busy", "true");
@@ -359,6 +365,7 @@
         const record = records[i];
         if (!query || record.search.includes(query)) {
           matches++;
+          // Keep ancestor paths so matching descendants remain navigable in the filtered tree.
           for (let current = record; current && !included.has(current); current = current.parent) included.add(current);
         }
         if (i % 1000 === 0) {
@@ -417,6 +424,7 @@
         }
       }
       if (!state.active || version !== generation) return false;
+      // Publish the complete fragment only after cancellation checks; stale searches cannot replace it.
       tree.replaceChildren(root);
       status.hidden = options.statusBar === false && records.length > 0 && (!query || matches > 0);
       status.textContent = records.length ? (query ? `${matches} matching nodes` : `${records.length} nodes`) : "No XML document.";
