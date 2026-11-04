@@ -7,10 +7,15 @@
  * MIT License (see LICENSE).
  */
 (function (global) {
-  /* --- SETUP --- */
+  /* --- INITIALIZATION --- */
   if (global.byXMLviewer?.initialized) return;
+
+  /* --- METADATA --- */
+  byXMLviewer.VERSION = "1"; // 2026-11-04
+
+  /* --- STATE --- */
   const instances = new WeakMap();
-  /* --- DOM HELPERS --- */
+  /* --- HELPERS --- */
   const node = (tag, className = "", text) => {
     const element = document.createElement(tag);
     element.className = className;
@@ -54,52 +59,6 @@
   };
   /** Yield at a chunk boundary so input events and replacement renders can run. */
   const pause = () => new Promise((resolve) => setTimeout(resolve, 0));
-
-  /* --- PARSING --- */
-  const parseXML = (source) => {
-    if (typeof source !== "string") throw new TypeError("XML input must be a string.");
-    if (source.length > 2000000) throw new RangeError("XML exceeds 2 million characters.");
-    if (!source.trim()) return null;
-    // Reject DTDs before parsing, including external entities, but allow declaration-like text in comments/CDATA.
-    for (let i = source.indexOf("<"); i !== -1; i = source.indexOf("<", i + 1)) {
-      const end = source.startsWith("<!--", i) ? "-->" : source.startsWith("<![CDATA[", i) ? "]]>" : source.startsWith("<?", i) ? "?>" : null;
-      if (end) {
-        const close = source.indexOf(end, i + 2);
-        i = close < 0 ? source.length : close + end.length - 1;
-      } else if (/^<!DOCTYPE\b/i.test(source.slice(i, i + 10))) throw new SyntaxError("DTD/DOCTYPE declarations are not supported. External resources are never loaded.");
-    }
-    // This document stays detached. Only its text/attributes are copied into viewer-owned HTML.
-    const document = new DOMParser().parseFromString(source, "application/xml");
-    const error = ["http://www.mozilla.org/newlayout/xml/parsererror.xml", "http://www.w3.org/1999/xhtml"].map((namespace) => document.getElementsByTagNameNS(namespace, "parsererror")[0]).find(Boolean);
-    if (error) throw new SyntaxError(error.textContent.trim());
-    const stack = [{ value: document, depth: 0 }];
-    let count = 0;
-    while (stack.length) {
-      const { value, depth } = stack.pop();
-      if (++count > 50000) throw new RangeError("XML exceeds 50,000 nodes.");
-      if (depth > 256) throw new RangeError("XML exceeds 256 nesting levels.");
-      for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, depth: depth + 1 });
-    }
-    return document;
-  };
-  /* --- RENDERING --- */
-  const xmlRecords = (document, options) => {
-    if (!document) return [];
-    const records = [],
-      stack = [];
-    for (let child = document.lastChild; child; child = child.previousSibling) stack.push({ value: child, parent: null });
-    while (stack.length) {
-      const record = stack.pop(),
-        value = record.value;
-      if (value.nodeType === 3 && options.showWhitespace !== true && !value.nodeValue.trim()) continue;
-      record.index = records.length;
-      record.search = [value.nodeName, value.nodeValue ?? "", ...Array.from(value.attributes || [], (attribute) => `${attribute.name}=${attribute.value}`)].join(" ").toLowerCase();
-      records.push(record);
-      for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, parent: record });
-    }
-    return records;
-  };
-
 
   /* --- CONTROLS --- */
   // Mirrored across the family so each viewer can run without a shared runtime.
@@ -261,6 +220,24 @@
     });
   };
 
+  /* --- RENDERING --- */
+  const xmlRecords = (document, options) => {
+    if (!document) return [];
+    const records = [],
+      stack = [];
+    for (let child = document.lastChild; child; child = child.previousSibling) stack.push({ value: child, parent: null });
+    while (stack.length) {
+      const record = stack.pop(),
+        value = record.value;
+      if (value.nodeType === 3 && options.showWhitespace !== true && !value.nodeValue.trim()) continue;
+      record.index = records.length;
+      record.search = [value.nodeName, value.nodeValue ?? "", ...Array.from(value.attributes || [], (attribute) => `${attribute.name}=${attribute.value}`)].join(" ").toLowerCase();
+      records.push(record);
+      for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, parent: record });
+    }
+    return records;
+  };
+
   /* --- LIFECYCLE --- */
   // One instance owns the container; replacement disposes its pending work first.
   /** Replace the previous owner and return its cancellable state. Only the current owner may clear the host. */
@@ -322,6 +299,33 @@
   };
 
   /* --- PUBLIC API --- */
+  byXMLviewer.parse = (source) => {
+    if (typeof source !== "string") throw new TypeError("XML input must be a string.");
+    if (source.length > 2000000) throw new RangeError("XML exceeds 2 million characters.");
+    if (!source.trim()) return null;
+    // Reject DTDs before parsing, including external entities, but allow declaration-like text in comments/CDATA.
+    for (let i = source.indexOf("<"); i !== -1; i = source.indexOf("<", i + 1)) {
+      const end = source.startsWith("<!--", i) ? "-->" : source.startsWith("<![CDATA[", i) ? "]]>" : source.startsWith("<?", i) ? "?>" : null;
+      if (end) {
+        const close = source.indexOf(end, i + 2);
+        i = close < 0 ? source.length : close + end.length - 1;
+      } else if (/^<!DOCTYPE\b/i.test(source.slice(i, i + 10))) throw new SyntaxError("DTD/DOCTYPE declarations are not supported. External resources are never loaded.");
+    }
+    // This document stays detached. Only its text/attributes are copied into viewer-owned HTML.
+    const document = new DOMParser().parseFromString(source, "application/xml");
+    const error = ["http://www.mozilla.org/newlayout/xml/parsererror.xml", "http://www.w3.org/1999/xhtml"].map((namespace) => document.getElementsByTagNameNS(namespace, "parsererror")[0]).find(Boolean);
+    if (error) throw new SyntaxError(error.textContent.trim());
+    const stack = [{ value: document, depth: 0 }];
+    let count = 0;
+    while (stack.length) {
+      const { value, depth } = stack.pop();
+      if (++count > 50000) throw new RangeError("XML exceeds 50,000 nodes.");
+      if (depth > 256) throw new RangeError("XML exceeds 256 nesting levels.");
+      for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, depth: depth + 1 });
+    }
+    return document;
+  };
+
   /** Parse an inert XML document and render elements/attributes as text, with cancellable chunked DOM creation. */
   function byXMLviewer(element, source, options = {}) {
     if (source === undefined) source = element?.textContent ?? "";
@@ -437,7 +441,7 @@
       try {
         await pause();
         if (!state.active) return false;
-        records = xmlRecords(parseXML(source), options);
+        records = xmlRecords(byXMLviewer.parse(source), options);
         return await render();
       } catch (error) {
         state.error(error);
@@ -447,8 +451,7 @@
     return { ready: state.ready, destroy: state.destroy };
   }
 
+  /* --- EXPORT --- */
   global.byXMLviewer = byXMLviewer;
-  byXMLviewer.VERSION = "1";
   byXMLviewer.initialized = true;
-  byXMLviewer.parse = parseXML;
 })(typeof window !== "undefined" ? window : this);
