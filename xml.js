@@ -11,7 +11,7 @@
   if (global.byXMLviewer?.initialized) return;
 
   /* --- METADATA --- */
-  byXMLviewer.VERSION = "1.1"; // 2026-11-04
+  byXMLviewer.VERSION = "1.2"; // 2026-11-04
 
   /* --- STATE --- */
   const instances = new WeakMap();
