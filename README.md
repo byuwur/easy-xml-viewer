@@ -75,7 +75,8 @@ Limits: 2 million input characters, 50,000 document nodes (including whitespace)
 | `animations`       | `true`      | Brief control/disclosure motion. `true` enables it and `false` disables it, overriding the system motion preference.                                       |
 | `toolbar`          | `true`      | Show the viewer header; secondary tools are configured separately.                                                                                         |
 | `credits`          | `true`      | Show attribution in the header.                                                                                                                            |
-| `statusBar`        | `true`      | Show counts and metadata. Loading, errors, and empty results remain visible.                                                                               |
+| `displayContainer` | `true`      | Show the content panel frame and inner horizontal padding. `false` also hides status information.                                                          |
+| `statusBar`        | `true`      | Show counts and metadata when `displayContainer` is true. With `statusBar: false`, loading and empty results remain visible; errors always remain visible. |
 | `expandCollapse`   | `false`     | Show Expand all / Collapse all.                                                                                                                            |
 | `copyValues`       | `false`     | Show copy-value buttons, independently of copyNodes.                                                                                                       |
 | `theme`            | Container   | Initial `"light"` or `"dark"` mode class.                                                                                                                  |
