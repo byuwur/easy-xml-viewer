@@ -7,15 +7,15 @@
  * MIT License (see LICENSE).
  */
 (function (global) {
-  /* --- INITIALIZATION --- */
+  // --- INITIALIZATION ---
   if (global.byXMLviewer?.initialized) return;
 
-  /* --- METADATA --- */
+  // --- METADATA ---
   byXMLviewer.VERSION = "1.4"; // 2026-11-05
 
-  /* --- STATE --- */
+  // --- STATE ---
   const instances = new WeakMap();
-  /* --- HELPERS --- */
+  // --- HELPERS ---
   const node = (tag, className = "", text) => {
     const element = document.createElement(tag);
     element.className = className;
@@ -57,10 +57,10 @@
     control.addEventListener("focusout", reset);
     return control;
   };
-  /** Yield at a chunk boundary so input events and replacement renders can run. */
+  // Yield at a chunk boundary so input events and replacement renders can run.
   const pause = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-  /* --- APPEARANCE --- */
+  // --- APPEARANCE ---
   const extraPalettes = new Set([
     "dracula",
     "darcula",
@@ -116,7 +116,7 @@
     console.warn(`easy-xml-viewer: Palette "${palette}" requires xml.themes.css. Import it after xml.css. https://byuwur.github.io/easy-xml-viewer/`);
   };
 
-  /** Explicit appearance options override markup; omitted values preserve the container's state. */
+  // Explicit appearance options override markup; omitted values preserve the container's state.
   const applyAppearance = (element, options) => {
     const { theme, palette, fontSize } = options;
     if (theme != null && !["light", "dark"].includes(theme)) throw new RangeError("Theme must be light or dark.");
@@ -137,7 +137,7 @@
     }
   };
 
-  /* --- CONTROLS --- */
+  // --- CONTROLS ---
   // Mirrored across the family so each viewer can run without a shared runtime.
   /**
    * Adds container light/dark controls, retaining legacy stylesheet links as a fallback.
@@ -297,7 +297,7 @@
     });
   };
 
-  /* --- RENDERING --- */
+  // --- RENDERING ---
   const xmlRecords = (document, options) => {
     if (!document) return [];
     const records = [],
@@ -315,9 +315,9 @@
     return records;
   };
 
-  /* --- LIFECYCLE --- */
+  // --- LIFECYCLE ---
   // One instance owns the container; replacement disposes its pending work first.
-  /** Replace the previous owner and return its cancellable state. Only the current owner may clear the host. */
+  // Replace the previous owner and return its cancellable state. Only the current owner may clear the host.
   const mount = (element, options, getText) => {
     if (!(element instanceof HTMLElement)) throw new TypeError("byXMLviewer: element must be an HTMLElement.");
     applyAppearance(element, options);
@@ -390,7 +390,7 @@
     return state;
   };
 
-  /* --- PUBLIC API --- */
+  // --- PUBLIC API ---
   byXMLviewer.parse = (source) => {
     if (typeof source !== "string") throw new TypeError("XML input must be a string.");
     if (source.length > 2000000) throw new RangeError("XML exceeds 2 million characters.");
@@ -418,7 +418,7 @@
     return document;
   };
 
-  /** Parse an inert XML document and render elements/attributes as text, with cancellable chunked DOM creation. */
+  // Parse an inert XML document and render elements/attributes as text, with cancellable chunked DOM creation.
   function byXMLviewer(element, source, options = {}) {
     if (source === undefined) source = element?.textContent ?? "";
     options = { collapsed: false, search: false, copyNodes: false, copyValues: false, showWhitespace: false, ...options };
@@ -450,7 +450,7 @@
     const serializer = new XMLSerializer();
     let records = [],
       generation = 0;
-    /* --- RENDERING --- */
+    // --- RENDERING ---
     const render = async () => {
       const version = ++generation;
       element.setAttribute("aria-busy", "true");
@@ -543,7 +543,7 @@
     return { ready: state.ready, destroy: state.destroy };
   }
 
-  /* --- EXPORT --- */
+  // --- EXPORT ---
   global.byXMLviewer = byXMLviewer;
   byXMLviewer.initialized = true;
 })(typeof window !== "undefined" ? window : this);
