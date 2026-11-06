@@ -409,14 +409,7 @@
                   spellcheck="false"
                   autocapitalize="off"
                   autocomplete="off"
-                  title="Ctrl / ⌘ + Enter to render. Tab moves focus.">
-&lt;?xml version="1.0"?&gt;
-&lt;catalog xmlns:app="urn:example"&gt;
-  &lt;!-- A small, independent viewer --&gt;
-  &lt;app:item id="1"&gt;&lt;name&gt;Andres &amp;amp; friends&lt;/name&gt;&lt;notes&gt;&lt;![CDATA[&lt;raw&gt; text]]&gt;&lt;/notes&gt;&lt;/app:item&gt;
-  &lt;?ready yes?&gt;
-&lt;/catalog&gt;</textarea
-                >
+                  title="Ctrl / ⌘ + Enter to render. Tab moves focus."></textarea>
               </div>
               <div id="source-status" class="panel-footer text-break border-top px-4 py-2 small font-monospace text-body-secondary" role="status">Edit to render</div>
             </section>
@@ -905,6 +898,14 @@
         const themeInputs = [...document.querySelectorAll('[name="previewTheme"]')];
         const error = document.getElementById("source-error");
         const status = document.getElementById("render-status");
+        // prettier-ignore
+        const samples = {
+          default: {"name": "Default showcase", "source": "\u003c?xml version=\"1.0\"?>\n\u003ccatalog xmlns:app=\"urn:example\">\n  \u003c!-- A small, independent viewer -->\n  \u003capp:item id=\"1\">\u003cname>Andres &amp; friends\u003c/name>\u003cnotes>\u003c![CDATA[\u003craw> text]]>\u003c/notes>\u003c/app:item>\n  \u003c?ready yes?>\n\u003c/catalog>"},
+          namespaces: {"name": "Namespaces", "source": "\u003ccatalog xmlns:app=\"urn:example\">\u003capp:item id=\"1\">Hello\u003c/app:item>\u003c/catalog>"},
+          nodes: {"name": "CDATA & comments", "source": "\u003c?xml version=\"1.0\"?>\n\u003croot>\u003c!-- A note -->\u003c![CDATA[\u003craw> & text]]>\u003c?ready yes?>\u003c/root>"},
+          mixed: {"name": "Mixed content", "source": "\u003cp>Hello \u003cstrong>world\u003c/strong> &amp; friends.\u003c/p>"},
+        };
+        source.value = samples.default.source;
         const initialSource = source.value;
         const initialSecond = second?.value;
         const defaults = {
@@ -1234,14 +1235,10 @@
         document.getElementById("year-txt").textContent = new Date().getFullYear();
 
         // --- EXAMPLES ---
-        const examples = {
-          namespaces: { label: "Namespaces", source: '\u003ccatalog xmlns:app="urn:example">\u003capp:item id="1">Hello\u003c/app:item>\u003c/catalog>' },
-          nodes: { label: "CDATA & comments", source: '\u003c?xml version="1.0"?>\n\u003croot>\u003c!-- A note -->\u003c![CDATA[\u003craw> & text]]>\u003c?ready yes?>\u003c/root>' },
-          mixed: { label: "Mixed content", source: "\u003cp>Hello \u003cstrong>world\u003c/strong> &amp; friends.\u003c/p>" }
-        };
+
         document.querySelectorAll("[data-example]").forEach((button) =>
           button.addEventListener("click", () => {
-            const example = examples[button.dataset.example];
+            const example = samples[button.dataset.example];
             ++sourceVersion;
             source.value = example.source;
             if (second) second.value = example.second;
