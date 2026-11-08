@@ -124,6 +124,7 @@
     warnMissingThemes(element, palette ?? element.dataset.theme);
     const size = typeof fontSize === "number" ? `${Math.max(0.5, Math.min(3, fontSize))}rem` : typeof fontSize === "string" ? `clamp(0.5rem, ${fontSize}, 3rem)` : "";
     if (fontSize != null && (typeof fontSize === "number" ? !Number.isFinite(fontSize) : typeof fontSize !== "string" || !CSS.supports("font-size", size))) throw new RangeError("Font size must be a finite multiplier or a CSS size.");
+    // Keep palette identity in data-theme while light/dark classes select its mode.
     if (theme != null || palette != null) {
       const mode = theme ?? (["light", "dark"].includes(element.dataset.theme) ? element.dataset.theme : element.classList.contains("dark") ? "dark" : "light");
       element.classList.toggle("light", mode === "light");
@@ -207,6 +208,7 @@
    * @return {HTMLElement} The text size button group.
    */
   const appendFontSizeControls = (element, controls) => {
+    // Remember the caller's initial size so Reset also works after this toolbar is recreated.
     element.dataset.byViewDefaultFontSize ??= element.style.fontSize;
     const sizes = document.createElement("div");
     sizes.className = "byVIEWfontSizes";
@@ -302,12 +304,14 @@
     if (!document) return [];
     const records = [],
       stack = [];
+    // Push siblings in reverse so the stack emits records in document order without recursive traversal.
     for (let child = document.lastChild; child; child = child.previousSibling) stack.push({ value: child, parent: null });
     while (stack.length) {
       const record = stack.pop(),
         value = record.value;
       if (value.nodeType === 3 && options.showWhitespace !== true && !value.nodeValue.trim()) continue;
       record.index = records.length;
+      // Index names, text, and attributes once; filtering can then retain the ancestor path of each match.
       record.search = [value.nodeName, value.nodeValue ?? "", ...Array.from(value.attributes || [], (attribute) => `${attribute.name}=${attribute.value}`)].join(" ").toLowerCase();
       records.push(record);
       for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, parent: record });
@@ -320,6 +324,7 @@
   // Replace the previous owner and return its cancellable state. Only the current owner may clear the host.
   const mount = (element, options, getText) => {
     if (!(element instanceof HTMLElement)) throw new TypeError("byXMLviewer: element must be an HTMLElement.");
+    // Validate appearance before disposing the current instance, so invalid options leave it usable.
     applyAppearance(element, options);
     const painted = element.classList.contains("byVIEWready");
     instances.get(element)?.destroy();
@@ -328,6 +333,7 @@
       if (!state.active) return;
       state.active = false;
       cancelAnimationFrame(state.motionFrame);
+      // An old controller must not clear a replacement mounted on the same element.
       if (instances.get(element) === state) {
         instances.delete(element);
         element.replaceChildren();
@@ -405,8 +411,10 @@
     }
     // This document stays detached. Only its text/attributes are copied into viewer-owned HTML.
     const document = new DOMParser().parseFromString(source, "application/xml");
+    // Browser engines place XML parse errors in different namespaces; ordinary elements named parsererror are valid.
     const error = ["http://www.mozilla.org/newlayout/xml/parsererror.xml", "http://www.w3.org/1999/xhtml"].map((namespace) => document.getElementsByTagNameNS(namespace, "parsererror")[0]).find(Boolean);
     if (error) throw new SyntaxError(error.textContent.trim());
+    // Enforce depth and node budgets before building viewer records or HTML.
     const stack = [{ value: document, depth: 0 }];
     let count = 0;
     while (stack.length) {
@@ -479,6 +487,7 @@
         const value = record.value;
         const parent = record.parent ? containers.get(record.parent) : root;
         if (value.nodeType === 1) {
+          // Native details/summary provide keyboard disclosure behavior; a noncollapsible tree uses plain containers.
           const details = node(options.collapsible === false ? "div" : "details", "byXMLnode");
           details.open = Boolean(query) || !options.collapsed;
           const summary = node(options.collapsible === false ? "div" : "summary", "byXMLheader");
