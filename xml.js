@@ -113,7 +113,8 @@
     const document = element.ownerDocument;
     if (document.defaultView.getComputedStyle(document.documentElement).getPropertyValue("--by-xml-themes-loaded").trim() === "1") return;
     warnedPalettes.add(palette);
-    console.warn(`easy-xml-viewer: Palette "${palette}" requires xml.themes.css. Import it after xml.css. https://byuwur.github.io/easy-xml-viewer/`);
+    // console.warn(`easy-xml-viewer: Palette "${palette}" requires xml.themes.css. Import it after xml.css. https://byuwur.github.io/easy-xml-viewer/`);
+    console.warn(`easy-xml-viewer: Palette "${palette}" requires xml.themes.css. Import it after xml.css. https://xml.byuwur.co/`);
   };
 
   // Explicit appearance options override markup; omitted values preserve the container's state.
