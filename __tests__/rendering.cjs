@@ -1,5 +1,5 @@
 /*
- * File: tests/rendering.cjs
+ * File: __tests__/rendering.cjs
  * Desc: XML library contracts using local renderer assets; playground checks live in playground.cjs.
  */
 
