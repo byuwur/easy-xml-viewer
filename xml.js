@@ -302,6 +302,7 @@
 
   // --- RENDERING ---
   const xmlRecords = (document, options) => {
+    const { showWhitespace = false } = options;
     if (!document) return [];
     const records = [],
       stack = [];
@@ -310,7 +311,7 @@
     while (stack.length) {
       const record = stack.pop(),
         value = record.value;
-      if (value.nodeType === 3 && options.showWhitespace !== true && !value.nodeValue.trim()) continue;
+      if (value.nodeType === 3 && !showWhitespace && !value.nodeValue.trim()) continue;
       record.index = records.length;
       // Index names, text, and attributes once; filtering can then retain the ancestor path of each match.
       record.search = [value.nodeName, value.nodeValue ?? "", ...Array.from(value.attributes || [], (attribute) => `${attribute.name}=${attribute.value}`)].join(" ").toLowerCase();
@@ -327,6 +328,17 @@
     if (!(element instanceof HTMLElement)) throw new TypeError("byXMLviewer: element must be an HTMLElement.");
     // Validate appearance before disposing the current instance, so invalid options leave it usable.
     applyAppearance(element, options);
+    const {
+      animations = true,
+      appearAnimation = false,
+      displayContainer = true,
+      controlsCompact = true,
+      credits = true,
+      themeToggle = true,
+      fontSizeControls = true,
+      copyButton: showCopyButton = true,
+      toolbar: showToolbar = true
+    } = options;
     const painted = element.classList.contains("byVIEWready");
     instances.get(element)?.destroy();
     const state = { active: true };
@@ -345,8 +357,8 @@
     instances.set(element, state);
     element.replaceChildren();
     element.classList.add("byXMLdocument");
-    element.classList.toggle("byVIEWmotion", options.animations !== false);
-    const appear = options.animations !== false && options.appearAnimation === true;
+    element.classList.toggle("byVIEWmotion", animations);
+    const appear = animations && appearAnimation;
     element.classList.toggle("byVIEWappear", appear);
     if (painted && !appear) element.classList.add("byVIEWready");
     else {
@@ -358,8 +370,8 @@
         });
       });
     }
-    element.classList.toggle("byVIEWplain", options.displayContainer === false);
-    element.classList.toggle("byVIEWcompact", options.controlsCompact !== false);
+    element.classList.toggle("byVIEWplain", !displayContainer);
+    element.classList.toggle("byVIEWcompact", controlsCompact);
     element.classList.toggle("byVIEWbottom", options.controlsPosition === "bottom");
     const content = node("div", "byVIEWcontent");
     const toolbar = node("div", "byVIEWtoolbar");
@@ -376,15 +388,15 @@
       if (info.childNodes.length) info.append(` · v${byXMLviewer.VERSION} · `);
       info.appendChild(link);
     }
-    if (options.credits !== false) toolbar.appendChild(info);
+    if (credits) toolbar.appendChild(info);
     const controls = node("div", "byVIEWcontrols");
     controls.setAttribute("role", "group");
     controls.setAttribute("aria-label", "Viewer controls");
-    if (options.themeToggle !== false) appendThemeToggle(element, controls, "xml");
-    if (options.fontSizeControls !== false) appendFontSizeControls(element, controls);
-    if (options.copyButton !== false) appendCopyButton(controls, getText, "Copy source");
+    if (themeToggle) appendThemeToggle(element, controls, "xml");
+    if (fontSizeControls) appendFontSizeControls(element, controls);
+    if (showCopyButton) appendCopyButton(controls, getText, "Copy source");
     if (controls.childNodes.length) toolbar.appendChild(controls);
-    if (options.toolbar === false || !toolbar.childNodes.length) {
+    if (!showToolbar || !toolbar.childNodes.length) {
       element.classList.remove("byVIEWbottom");
       element.appendChild(content);
     } else element.append(...(options.controlsPosition === "bottom" ? [content, toolbar] : [toolbar, content]));
@@ -432,24 +444,25 @@
   // Parse an inert XML document and render elements/attributes as text, with cancellable chunked DOM creation.
   function byXMLviewer(element, source, options = {}) {
     if (source === undefined) source = element?.textContent ?? "";
-    options = { collapsed: false, search: false, copyNodes: false, copyValues: false, showWhitespace: false, ...options };
+    options = { ...options };
+    const { collapsed = false, search: showSearch = false, copyNodes = false, copyValues = false, expandCollapse = false, collapsible = true, statusBar = true } = options;
     const state = mount(element, options, () => source);
     const actions = node("div", "byVIEWactions");
     const search = node("input");
     search.type = "search";
     search.placeholder = "Search XML";
     search.setAttribute("aria-label", "Search XML");
-    if (options.search !== false) actions.appendChild(search);
+    if (showSearch) actions.appendChild(search);
     const status = node("p", "byVIEWstatus", "Parsing…");
     status.setAttribute("role", "status");
     const tree = node("div", "byXMLtree");
-    if (options.expandCollapse === true && options.collapsible !== false)
+    if (expandCollapse && collapsible)
       button(actions, "Expand all", "Expand all XML nodes", () =>
         tree.querySelectorAll("details").forEach((details) => {
           details.open = true;
         })
       );
-    if (options.expandCollapse === true && options.collapsible !== false)
+    if (expandCollapse && collapsible)
       button(actions, "Collapse all", "Collapse all XML nodes", () =>
         tree.querySelectorAll("details").forEach((details) => {
           details.open = false;
@@ -491,18 +504,18 @@
         const parent = record.parent ? containers.get(record.parent) : root;
         if (value.nodeType === 1) {
           // Native details/summary provide keyboard disclosure behavior; a noncollapsible tree uses plain containers.
-          const details = node(options.collapsible === false ? "div" : "details", "byXMLnode");
-          details.open = Boolean(query) || !options.collapsed;
-          const summary = node(options.collapsible === false ? "div" : "summary", "byXMLheader");
+          const details = node(!collapsible ? "div" : "details", "byXMLnode");
+          details.open = Boolean(query) || !collapsed;
+          const summary = node(!collapsible ? "div" : "summary", "byXMLheader");
           summary.appendChild(node("span", "byXMLtag", `<${value.nodeName}`));
           for (const attribute of value.attributes) {
             summary.append(" ", node("span", "byXMLattribute", attribute.name), "=", node("span", "byXMLvalue", JSON.stringify(attribute.value)));
           }
           summary.appendChild(node("span", "byXMLtag", value.childNodes.length ? ">" : " />"));
-          if (options.copyNodes !== false) {
+          if (copyNodes) {
             copyButton(summary, () => serializer.serializeToString(value), "Copy XML node", "Copy node");
           }
-          if (options.copyValues === true) copyButton(summary, () => value.textContent, "Copy XML value", "Copy value");
+          if (copyValues) copyButton(summary, () => value.textContent, "Copy XML value", "Copy value");
           const children = node("div", "byXMLchildren");
           details.append(summary, children);
           if (value.childNodes.length) details.appendChild(node("div", "byXMLtag", `</${value.nodeName}>`));
@@ -523,7 +536,7 @@
             className = "byXMLpi";
           }
           line.appendChild(node("span", className, text));
-          if (options.copyValues === true) copyButton(line, () => value.nodeValue ?? "", "Copy XML value", "Copy value");
+          if (copyValues) copyButton(line, () => value.nodeValue ?? "", "Copy XML value", "Copy value");
           parent.appendChild(line);
         }
         if (++count % 100 === 0) {
@@ -534,7 +547,7 @@
       if (!state.active || version !== generation) return false;
       // Publish the complete fragment only after cancellation checks; stale searches cannot replace it.
       tree.replaceChildren(root);
-      status.hidden = options.statusBar === false && records.length > 0 && (!query || matches > 0);
+      status.hidden = !statusBar && records.length > 0 && (!query || matches > 0);
       status.textContent = records.length ? (query ? `${matches} matching nodes` : `${records.length} nodes`) : "No XML document.";
       element.setAttribute("aria-busy", "false");
       return true;
