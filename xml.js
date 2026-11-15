@@ -453,7 +453,7 @@
     search.placeholder = "Search XML";
     search.setAttribute("aria-label", "Search XML");
     if (showSearch) actions.appendChild(search);
-    const status = node("p", "byVIEWstatus", "Parsing…");
+    const status = node("p", "byVIEWstatus", "Parsing...");
     status.setAttribute("role", "status");
     const tree = node("div", "byXMLtree");
     if (expandCollapse && collapsible)
