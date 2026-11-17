@@ -2,6 +2,8 @@
 
 ![XML.view preview](prev.jpg)
 
+Development version: **v2** (unreleased). The [latest release](https://github.com/byuwur/xml.view/releases/latest) supplies the published files.
+
 **XML, unfold every tag.**
 
 Explore elements, attributes, namespaces, text, comments, and CDATA in a searchable tree.
