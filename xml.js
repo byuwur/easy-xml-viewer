@@ -1,9 +1,9 @@
 "use strict";
 /*
  * File: xml.js
- * Desc: Standalone XML viewer. No runtime dependencies.
+ * Desc: Standalone XML.view. No runtime dependencies.
  * Copyright (c) 2026 Andres Trujillo [Mateus] byUwUr
- * https://github.com/byuwur/easy-xml-viewer
+ * https://github.com/byuwur/xml.view
  * MIT License (see LICENSE).
  */
 (function (global) {
@@ -113,8 +113,8 @@
     const document = element.ownerDocument;
     if (document.defaultView.getComputedStyle(document.documentElement).getPropertyValue("--by-xml-themes-loaded").trim() === "1") return;
     warnedPalettes.add(palette);
-    // console.warn(`easy-xml-viewer: Palette "${palette}" requires xml.themes.css. Import it after xml.css. https://byuwur.github.io/easy-xml-viewer/`);
-    console.warn(`easy-xml-viewer: Palette "${palette}" requires xml.themes.css. Import it after xml.css. https://xml.byuwur.co/`);
+    // console.warn(`XML.view: Palette "${palette}" requires xml.themes.css. Import it after xml.css. https://byuwur.github.io/xml.view/`);
+    console.warn(`XML.view: Palette "${palette}" requires xml.themes.css. Import it after xml.css. https://xml.byuwur.co/`);
   };
 
   // Explicit appearance options override markup; omitted values preserve the container's state.
@@ -378,7 +378,7 @@
     toolbar.dataset.size = ["xs", "small", "regular", "large", "xl"].includes(options.controlsSize) ? options.controlsSize : "regular";
     const info = node("small", "byVIEWinfo");
     for (const [text, href] of [
-      ["easy-xml-viewer", "https://github.com/byuwur/easy-xml-viewer"],
+      ["XML.view", "https://github.com/byuwur/xml.view"],
       ["@byUwUr", "https://byuwur.co"]
     ]) {
       const link = node("a", "", text);

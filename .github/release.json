@@ -1,5 +1,5 @@
 {
-  "repository": "byuwur/easy-xml-viewer",
+  "repository": "byuwur/xml.view",
   "branch": "main",
   "kind": "easy",
   "runtime": ["xml.js", "xml.css", "xml.themes.css"],

@@ -1,5 +1,5 @@
 {
-  "name": "easy-xml-viewer-release",
+  "name": "xml.view",
   "private": true,
   "engines": {
     "node": ">=22"
