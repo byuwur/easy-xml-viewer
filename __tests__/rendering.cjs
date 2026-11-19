@@ -21,6 +21,9 @@ test("XML library", { timeout: 30000 }, async (t) => {
   page.on("pageerror", (error) => errors.push(error.message));
   // Load authored files directly; CDN availability is not part of this contract.
   await page.route("**/*", (route) => route.abort());
+  // ===============
+  // BROWSER FIXTURE
+  // ===============
   await page.setContent('<!doctype html><meta charset="UTF-8"><div id="viewer"></div>');
   await page.addStyleTag({ path: path.join(__dirname, "../xml.css") });
   await page.addScriptTag({ path: path.join(__dirname, "../xml.js") });
@@ -28,8 +31,19 @@ test("XML library", { timeout: 30000 }, async (t) => {
     window.root = document.getElementById("viewer");
   });
 
+  // ==================
+  // RENDERING BEHAVIOR
+  // ==================
   await t.test("renders nested XML and decoded values", async () => {
-    assert.equal(await page.evaluate(() => byXMLviewer(root, '<root><item id="one">value &amp; more</item></root>', { animations: false }).ready), true);
+    assert.equal(
+      await page.evaluate(
+        () =>
+          byXMLviewer(root, '<root><item id="one">value &amp; more</item></root>', {
+            animations: false
+          }).ready
+      ),
+      true
+    );
     assert.match(await page.locator(".byXMLtree").textContent(), /item/);
     assert.match(await page.locator(".byXMLtree").textContent(), /value & more/);
   });
@@ -39,7 +53,12 @@ test("XML library", { timeout: 30000 }, async (t) => {
       const malformed = await byXMLviewer(root, "<a><b></a>").ready;
       const dtd = await byXMLviewer(root, '<!DOCTYPE r [<!ENTITY x SYSTEM "https://invalid.test/secret">]><r>&x;</r>').ready;
       await byXMLviewer(root, '<r><img src="x" onerror="window.injected=1"/><script>window.injected=1</script></r>').ready;
-      return { malformed, dtd, elements: root.querySelectorAll("img, script").length, injected: Boolean(window.injected) };
+      return {
+        malformed,
+        dtd,
+        elements: root.querySelectorAll("img, script").length,
+        injected: Boolean(window.injected)
+      };
     });
     assert.deepEqual(result, { malformed: false, dtd: false, elements: 0, injected: false });
   });

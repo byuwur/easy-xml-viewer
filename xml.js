@@ -7,15 +7,23 @@
  * MIT License (see LICENSE).
  */
 (function (global) {
-  // --- INITIALIZATION ---
+  // ==============
+  // INITIALIZATION
+  // ==============
   if (global.byXMLviewer?.initialized) return;
 
-  // --- METADATA ---
+  // ==========
+  // METADATA
+  // ==========
   byXMLviewer.VERSION = "2.1"; // 2026-11-18
 
-  // --- STATE ---
+  // ==========
+  // STATE
+  // ==========
   const instances = new WeakMap();
-  // --- HELPERS ---
+  // ==========
+  // HELPERS
+  // ==========
   const node = (tag, className = "", text) => {
     const element = document.createElement(tag);
     element.className = className;
@@ -60,7 +68,9 @@
   // Yield at a chunk boundary so input events and replacement renders can run.
   const pause = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-  // --- APPEARANCE ---
+  // ==========
+  // APPEARANCE
+  // ==========
   const extraPalettes = new Set([
     "dracula",
     "darcula",
@@ -139,7 +149,9 @@
     }
   };
 
-  // --- CONTROLS ---
+  // ==========
+  // CONTROLS
+  // ==========
   // Mirrored across the family so each viewer can run without a shared runtime.
   /**
    * Adds container light/dark controls, retaining legacy stylesheet links as a fallback.
@@ -300,7 +312,9 @@
     });
   };
 
-  // --- RENDERING ---
+  // ==========
+  // RENDERING
+  // ==========
   const xmlRecords = (document, options) => {
     const { showWhitespace = false } = options;
     if (!document) return [];
@@ -321,7 +335,9 @@
     return records;
   };
 
-  // --- LIFECYCLE ---
+  // ==========
+  // LIFECYCLE
+  // ==========
   // One instance owns the container; replacement disposes its pending work first.
   // Replace the previous owner and return its cancellable state. Only the current owner may clear the host.
   const mount = (element, options, getText) => {
@@ -411,36 +427,9 @@
     return state;
   };
 
-  // --- PUBLIC API ---
-  byXMLviewer.parse = (source) => {
-    if (typeof source !== "string") throw new TypeError("XML input must be a string.");
-    if (source.length > 2000000) throw new RangeError("XML exceeds 2 million characters.");
-    if (!source.trim()) return null;
-    // Reject DTDs before parsing, including external entities, but allow declaration-like text in comments/CDATA.
-    for (let i = source.indexOf("<"); i !== -1; i = source.indexOf("<", i + 1)) {
-      const end = source.startsWith("<!--", i) ? "-->" : source.startsWith("<![CDATA[", i) ? "]]>" : source.startsWith("<?", i) ? "?>" : null;
-      if (end) {
-        const close = source.indexOf(end, i + 2);
-        i = close < 0 ? source.length : close + end.length - 1;
-      } else if (/^<!DOCTYPE\b/i.test(source.slice(i, i + 10))) throw new SyntaxError("DTD/DOCTYPE declarations are not supported. External resources are never loaded.");
-    }
-    // This document stays detached. Only its text/attributes are copied into viewer-owned HTML.
-    const document = new DOMParser().parseFromString(source, "application/xml");
-    // Browser engines place XML parse errors in different namespaces; ordinary elements named parsererror are valid.
-    const error = ["http://www.mozilla.org/newlayout/xml/parsererror.xml", "http://www.w3.org/1999/xhtml"].map((namespace) => document.getElementsByTagNameNS(namespace, "parsererror")[0]).find(Boolean);
-    if (error) throw new SyntaxError(error.textContent.trim());
-    // Enforce depth and node budgets before building viewer records or HTML.
-    const stack = [{ value: document, depth: 0 }];
-    let count = 0;
-    while (stack.length) {
-      const { value, depth } = stack.pop();
-      if (++count > 50000) throw new RangeError("XML exceeds 50,000 nodes.");
-      if (depth > 256) throw new RangeError("XML exceeds 256 nesting levels.");
-      for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, depth: depth + 1 });
-    }
-    return document;
-  };
-
+  // ==========
+  // PUBLIC API
+  // ==========
   // Parse an inert XML document and render elements/attributes as text, with cancellable chunked DOM creation.
   function byXMLviewer(element, source, options = {}) {
     if (source === undefined) source = element?.textContent ?? "";
@@ -474,7 +463,9 @@
     const serializer = new XMLSerializer();
     let records = [],
       generation = 0;
-    // --- RENDERING ---
+    // ==========
+    // RENDERING
+    // ==========
     const render = async () => {
       const version = ++generation;
       element.setAttribute("aria-busy", "true");
@@ -568,7 +559,38 @@
     return { ready: state.ready, destroy: state.destroy };
   }
 
-  // --- EXPORT ---
+  byXMLviewer.parse = (source) => {
+    if (typeof source !== "string") throw new TypeError("XML input must be a string.");
+    if (source.length > 2000000) throw new RangeError("XML exceeds 2 million characters.");
+    if (!source.trim()) return null;
+    // Reject DTDs before parsing, including external entities, but allow declaration-like text in comments/CDATA.
+    for (let i = source.indexOf("<"); i !== -1; i = source.indexOf("<", i + 1)) {
+      const end = source.startsWith("<!--", i) ? "-->" : source.startsWith("<![CDATA[", i) ? "]]>" : source.startsWith("<?", i) ? "?>" : null;
+      if (end) {
+        const close = source.indexOf(end, i + 2);
+        i = close < 0 ? source.length : close + end.length - 1;
+      } else if (/^<!DOCTYPE\b/i.test(source.slice(i, i + 10))) throw new SyntaxError("DTD/DOCTYPE declarations are not supported. External resources are never loaded.");
+    }
+    // This document stays detached. Only its text/attributes are copied into viewer-owned HTML.
+    const document = new DOMParser().parseFromString(source, "application/xml");
+    // Browser engines place XML parse errors in different namespaces; ordinary elements named parsererror are valid.
+    const error = ["http://www.mozilla.org/newlayout/xml/parsererror.xml", "http://www.w3.org/1999/xhtml"].map((namespace) => document.getElementsByTagNameNS(namespace, "parsererror")[0]).find(Boolean);
+    if (error) throw new SyntaxError(error.textContent.trim());
+    // Enforce depth and node budgets before building viewer records or HTML.
+    const stack = [{ value: document, depth: 0 }];
+    let count = 0;
+    while (stack.length) {
+      const { value, depth } = stack.pop();
+      if (++count > 50000) throw new RangeError("XML exceeds 50,000 nodes.");
+      if (depth > 256) throw new RangeError("XML exceeds 256 nesting levels.");
+      for (let child = value.lastChild; child; child = child.previousSibling) stack.push({ value: child, depth: depth + 1 });
+    }
+    return document;
+  };
+
+  // ==========
+  // EXPORT
+  // ==========
   global.byXMLviewer = byXMLviewer;
   byXMLviewer.initialized = true;
 })(typeof window !== "undefined" ? window : this);
