@@ -86,7 +86,7 @@ Limits: 2 million input characters, 50,000 document nodes (including whitespace)
 
 | Option             | Default     | Behavior                                                                                                                                                   |
 | ------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `animations`       | `true`      | Brief control/disclosure motion and background fades; overrides the system motion preference.                                                              |
+| `animations`       | `true`      | Animate controls, disclosures and theme backgrounds. Overrides the system motion preference.                                                               |
 | `appearAnimation`  | `false`     | Fade the viewer in on each render when `animations` is enabled. Initial rendering remains immediate by default.                                            |
 | `toolbar`          | `true`      | Show the viewer header; secondary tools are configured separately.                                                                                         |
 | `credits`          | `true`      | Show attribution in the header.                                                                                                                            |
@@ -104,7 +104,7 @@ Limits: 2 million input characters, 50,000 document nodes (including whitespace)
 | `controlsCompact`  | `true`      | Keep credits beside controls; `false` stacks them. Wraps as needed.                                                                                        |
 | `controlsPosition` | `"top"`     | Sticky `"top"` or `"bottom"` toolbar; invalid values use `"top"`.                                                                                          |
 
-The controller exposes `ready` and `destroy()`. `ready` resolves `true` after initial rendering, or `false` on a displayed data error or cancellation. Invalid targets/options can throw synchronously.
+The controller exposes `ready`, `setOptions(changes)`, and `destroy()`. `ready` resolves `true` after initial rendering, or `false` on a displayed data error or cancellation. Invalid targets/options can throw synchronously.
 
 `ready` describes the initial render only; it does not track later searches or disclosure changes.
 
@@ -134,7 +134,7 @@ Controls use monospace by default; override `--by-view-controls-font` to change 
 
 Use `theme` for light or dark mode and `palette` for the color scheme. Monokai, GitHub, Solarized and High Contrast are built in. Load [xml.themes.css](xml.themes.css) after the base stylesheet for the other palettes.
 
-Options override container settings. Omit an option or pass `null` to keep its current value. Numeric `fontSize` uses rem. CSS sizes such as `20px` also work within the `0.5rem` to `3rem` range. Invalid appearance values throw `RangeError` before replacing the document.
+Options override container settings. Omit an option or pass `null` to keep its current value. Call `setOptions(changes)` on the returned viewer to apply settings immediately. Presentation changes preserve the displayed document. The text controls resize content in `0.125rem` steps. Content padding stays fixed. The document frame, toolbar, and status line keep their size. Reset restores the configured or inherited size. Numeric `fontSize` uses rem. CSS sizes such as `20px` also work within the `0.5rem` to `3rem` range. Invalid appearance values throw `RangeError` before replacing the document.
 
 ```html
 <div id="viewer" class="dark" data-theme="github"></div>
