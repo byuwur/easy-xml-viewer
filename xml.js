@@ -7,23 +7,15 @@
  * MIT License (see LICENSE).
  */
 (function (global) {
-  // ==============
-  // INITIALIZATION
-  // ==============
+  // ===== INITIALIZATION =====
   if (global.byXMLviewer?.initialized) return;
 
-  // ==========
-  // METADATA
-  // ==========
+  // ===== METADATA =====
   byXMLviewer.VERSION = "2.1"; // 2026-11-18
 
-  // ==========
-  // STATE
-  // ==========
+  // ===== STATE =====
   const instances = new WeakMap();
-  // ==========
-  // HELPERS
-  // ==========
+  // ===== HELPERS =====
   const node = (tag, className = "", text) => {
     const element = document.createElement(tag);
     element.className = className;
@@ -68,9 +60,7 @@
   // Yield at a chunk boundary so input events and replacement renders can run.
   const pause = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-  // ==========
-  // APPEARANCE
-  // ==========
+  // ===== APPEARANCE =====
   const extraPalettes = new Set([
     "dracula",
     "darcula",
@@ -149,9 +139,7 @@
     }
   };
 
-  // ==========
-  // CONTROLS
-  // ==========
+  // ===== CONTROLS =====
   // Mirrored across the family so each viewer can run without a shared runtime.
   /**
    * Adds container light/dark controls, retaining legacy stylesheet links as a fallback.
@@ -312,9 +300,7 @@
     });
   };
 
-  // ==========
-  // RENDERING
-  // ==========
+  // ===== RENDERING =====
   const xmlRecords = (document, options) => {
     const { showWhitespace = false } = options;
     if (!document) return [];
@@ -335,9 +321,7 @@
     return records;
   };
 
-  // ==========
-  // LIFECYCLE
-  // ==========
+  // ===== LIFECYCLE =====
   // One instance owns the container; replacement disposes its pending work first.
   // Replace the previous owner and return its cancellable state. Only the current owner may clear the host.
   const mount = (element, options, getText) => {
@@ -427,9 +411,7 @@
     return state;
   };
 
-  // ==========
-  // PUBLIC API
-  // ==========
+  // ===== PUBLIC API =====
   // Parse an inert XML document and render elements/attributes as text, with cancellable chunked DOM creation.
   function byXMLviewer(element, source, options = {}) {
     if (source === undefined) source = element?.textContent ?? "";
@@ -463,9 +445,7 @@
     const serializer = new XMLSerializer();
     let records = [],
       generation = 0;
-    // ==========
-    // RENDERING
-    // ==========
+    // ===== RENDERING =====
     const render = async () => {
       const version = ++generation;
       element.setAttribute("aria-busy", "true");
@@ -588,9 +568,7 @@
     return document;
   };
 
-  // ==========
-  // EXPORT
-  // ==========
+  // ===== EXPORT =====
   global.byXMLviewer = byXMLviewer;
   byXMLviewer.initialized = true;
 })(typeof window !== "undefined" ? window : this);
